@@ -4,14 +4,27 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
 
-//	TODO: Function generating small uniqual links
 //	TODO: Refactoring code
+
+func generateLink() string {
+	digits := "0123456789"
+	symbols := "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	var letters = []rune(symbols + digits)
+	rslt := make([]rune, 12)
+	for i := range rslt {
+		rslt[i] = letters[rand.Intn(len(letters))]
+	}
+	slog.Info("https://shrt.link/" + string(rslt))
+	return "https://shrt.link/" + string(rslt)
+
+}
 
 func do(inputData string) {
 	connStr := "user=postgres password=1234 dbname=postgres sslmode=disable"
@@ -21,10 +34,11 @@ func do(inputData string) {
 		panic(err)
 	}
 	defer db.Close()
-	sql := "INSERT INTO links (origlink, customlink) VALUES ('https://hom=fav1te_vacacy_list', 'https://shrt.452')"
+	sql := "INSERT INTO links (origlink, customlink) VALUES ('" + inputData + "', '" + generateLink() + "')"
 	result, err := db.Exec(sql)
 	if err != nil {
 		slog.Warn("INSERT INTO links IS FAILDED :C\n")
+		slog.Warn(sql + "\n")
 		slog.Warn(err.Error())
 		panic(err)
 	}
