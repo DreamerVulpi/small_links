@@ -9,44 +9,116 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
+	"github.com/spf13/viper"
 )
 
 //	TODO: Refactoring code
+
+type database struct {
+	driver   string `mapstructure:"driver"`
+	user     string `mapstructure:"user"`
+	password string `mapstructure:"password"`
+	dbname   string `mapstructure:"dbname"`
+	sslmode  string `mapstructure:"sslmode"`
+}
+
+type server struct {
+	host string `mapstructure:"host"`
+	port string `mapstructure:"port"`
+}
+
+type AppConfig struct {
+	s        server
+	db       database
+	path     string
+	nameFile string
+	typeFile string
+}
+
+func LoadConfig(config *AppConfig) {
+	v := viper.New()
+	v.SetConfigName(config.nameFile)
+	v.SetConfigType(config.typeFile)
+	v.AddConfigPath(config.path)
+
+	v.AutomaticEnv()
+	if err := v.ReadInConfig(); err != nil {
+		slog.Warn("failed to read the configuration file: %s", err)
+		return
+	}
+	config.db.driver = v.GetString("database.driver")
+	config.db.user = v.GetString("database.user")
+	config.db.password = v.GetString("database.password")
+	config.db.dbname = v.GetString("database.dbname")
+	config.db.sslmode = v.GetString("database.sslmode")
+	config.s.host = v.GetString("server.host")
+	config.s.port = v.GetString("server.port")
+	config.s.port = v.GetString("server.port")
+	config.s.port = v.GetString("server.port")
+	config.s.port = v.GetString("server.port")
+	config.s.port = v.GetString("server.port")
+	config.s.port = v.GetString("server.port")
+	config.s.port = v.GetString("server.port")
+	return
+}
 
 func generateLink() string {
 	digits := "0123456789"
 	symbols := "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	var letters = []rune(symbols + digits)
-	rslt := make([]rune, 12)
+	rslt := make([]rune, 6)
 	for i := range rslt {
 		rslt[i] = letters[rand.Intn(len(letters))]
 	}
-	slog.Info("https://shrt.link/" + string(rslt))
-	return "https://shrt.link/" + string(rslt)
+	slog.Info(string(rslt))
+	return string(rslt)
 
 }
 
-func do(inputData string) {
-	connStr := "user=postgres password=1234 dbname=postgres sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
+func do(conn *sql.DB, inputData string) {
+	// SELECT EXISTS(SELECT origlink FROM links WHERE origlink = 'UWU.ooo')
+	var status bool
+	conn.QueryRow("SELECT EXISTS(SELECT origlink FROM links WHERE origlink = $1)", inputData).Scan(&status)
+	if status {
+		slog.Warn("oops, this link is avaliable")
+		var link string
+		err := conn.QueryRow("SELECT customlink FROM links WHERE origlink = $1)", inputData).Scan(&link)
+		slog.Info("SELECT customlink FROM links WHERE origlink = '" + inputData + "'")
+		if err != nil {
+			slog.Warn("oops, can't get link")
+		}
+		slog.Info("ur link ->" + link)
+	} else {
+
+		result, err := conn.Exec("INSERT INTO links (origlink, customlink) VALUES ($1 , $2)", inputData, generateLink())
+
+		if err != nil {
+			slog.Warn(fmt.Sprintf("INSERT INTO links (origlink, customlink) VALUES ($1 , $2)", inputData, generateLink()))
+			panic(err)
+		}
+		fmt.Println(result.RowsAffected())
+		slog.Info("u did it, yo -> " + inputData)
+	}
+}
+
+func main() {
+	var config AppConfig
+	config.path = "."
+	config.nameFile = "config"
+	config.typeFile = "yaml"
+
+	LoadConfig(&config)
+	slog.Info(config.db.driver)
+
+	// FIXME: THIS IS BULLSSHIT
+	data := "user=" + config.db.user + " password= " + config.db.password + " dbname= " + config.db.dbname + " sslmode=" + config.db.sslmode
+	conn, err := sql.Open(config.db.driver, data)
 	if err != nil {
 		slog.Warn("Connect is FAILDED :C\n")
 		panic(err)
 	}
-	defer db.Close()
-	sql := "INSERT INTO links (origlink, customlink) VALUES ('" + inputData + "', '" + generateLink() + "')"
-	result, err := db.Exec(sql)
-	if err != nil {
-		slog.Warn("INSERT INTO links IS FAILDED :C\n")
-		slog.Warn(sql + "\n")
-		slog.Warn(err.Error())
-		panic(err)
-	}
-	fmt.Println(result.RowsAffected())
-	slog.Info("u did it, yo -> " + inputData)
-}
+	defer conn.Close()
 
-func main() {
 	router := gin.Default()
 	router.LoadHTMLFiles("index.html")
 	router.GET("/", func(c *gin.Context) {
@@ -56,7 +128,7 @@ func main() {
 	})
 	router.POST("/postform", func(c *gin.Context) {
 		inputData := c.Request.FormValue("inputData")
-		do(inputData)
+		do(conn, inputData)
 	})
-	router.Run(":8080")
+	router.Run(":" + config.s.port)
 }

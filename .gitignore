@@ -1,1 +1,2 @@
-db.sql
+*.sql
+app.env
