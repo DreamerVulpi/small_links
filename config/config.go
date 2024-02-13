@@ -8,11 +8,9 @@ import (
 )
 
 type Database struct {
-	Driver   string `mapstructure:"driver"`
-	User     string `mapstructure:"user"`
 	Password string `mapstructure:"password"`
 	DBname   string `mapstructure:"dbname"`
-	Sslmode  string `mapstructure:"sslmode"`
+	Port     string `mapstructure:"port"`
 }
 
 type Server struct {
@@ -28,7 +26,7 @@ type AppConfig struct {
 	TypeFile string
 }
 
-func LoadConfig(config *AppConfig) {
+func LoadConfig(config *AppConfig) error {
 	v := viper.New()
 	v.SetConfigName(config.NameFile)
 	v.SetConfigType(config.TypeFile)
@@ -37,14 +35,13 @@ func LoadConfig(config *AppConfig) {
 
 	if err := v.ReadInConfig(); err != nil {
 		slog.Warn("failed to read the configuration file: %s", err)
-		return
+		return err
+	} else {
+		config.DB.Password = v.GetString("database.password")
+		config.DB.DBname = v.GetString("database.dbname")
+		config.DB.Port = v.GetString("database.port")
+		config.S.Host = v.GetString("server.host")
+		config.S.Port = v.GetString("server.port")
+		return err
 	}
-	config.DB.Driver = v.GetString("database.driver")
-	config.DB.User = v.GetString("database.user")
-	config.DB.Password = v.GetString("database.password")
-	config.DB.DBname = v.GetString("database.dbname")
-	config.DB.Sslmode = v.GetString("database.sslmode")
-	config.S.Host = v.GetString("server.host")
-	config.S.Port = v.GetString("server.port")
-	return
 }

@@ -3,6 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <link rel="stylesheet" href="css/style.css">
+        <title> {{.Title}} </title>
     </head>
     <body>
         <div class="bg-image"></div>
@@ -15,9 +16,6 @@
                 <br> <br>
                 <input class ="button" type="submit" value="Compress">
             </form>
-            {{if .Line}}
-                <p> Your small link {{.HostName}}/{{.Line}}</p>
-            {{end}}
         </div>
     </body>
 </html>

@@ -1,9 +1,7 @@
   database:
-    driver: postgres
-    user: postgres
-    password: 1234
-    dbname: postgres
-    sslmode: disable
+    password: ""
+    dbname: 0
+    port: 6379
   server:
     host: localhost
     port: 8080
